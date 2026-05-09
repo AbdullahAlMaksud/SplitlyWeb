@@ -1,0 +1,78 @@
+"use client";
+
+import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
+import { MemberAvatar } from "@/components/splitly/member-avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useSplitlyStore } from "@/store/splitly-store";
+import type { Group } from "@/lib/types";
+
+export function MemberList({ group }: { group: Group }) {
+  const { addMember, removeMember, currentUser } = useSplitlyStore();
+  const { t } = useTranslation();
+  const [name, setName] = useState("");
+  const [message, setMessage] = useState("");
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("members.title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {group.members.map((member) => (
+            <div
+              key={member.id}
+              className="flex items-center gap-3 rounded-md border border-white/15 bg-white/10 p-3 backdrop-blur-xl"
+            >
+              <MemberAvatar member={member} className="size-9" />
+              <span className="min-w-0 flex-1 font-medium">{member.name}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t("members.removeAria", { name: member.name })}
+                disabled={member.id === currentUser.id}
+                onClick={() => {
+                  const removed = removeMember(group.id, member.id);
+                  setMessage(
+                    removed
+                      ? t("members.removedMessage", { name: member.name })
+                      : t("members.cannotRemove"),
+                  );
+                }}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+        {message ? (
+          <p className="text-xs text-muted-foreground">{message}</p>
+        ) : null}
+        <form
+          className="flex gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!name.trim()) return;
+            addMember(group.id, name);
+            setName("");
+          }}
+        >
+          <Input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={t("members.addPlaceholder")}
+          />
+          <Button type="submit" size="icon" aria-label={t("members.addAria")}>
+            <Plus className="size-4" />
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
