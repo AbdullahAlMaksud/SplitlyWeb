@@ -169,7 +169,7 @@ export function AddExpenseDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] min-w-2xl max-w-5xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("expenseDialog.title")}</DialogTitle>
           <DialogDescription>
