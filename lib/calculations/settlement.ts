@@ -7,30 +7,54 @@ import type {
   SettlementTransaction,
 } from "@/lib/types"
 
+const CENTS_PER_CURRENCY_UNIT = 100
+
+export function roundCentsToCurrencyUnit(cents: number) {
+  const sign = cents < 0 ? -1 : 1
+
+  return sign * Math.round(Math.abs(cents) / CENTS_PER_CURRENCY_UNIT) * CENTS_PER_CURRENCY_UNIT
+}
+
 function normalizePayments(expense: Expense): ExpensePayment[] {
   const payments =
     expense.payments && expense.payments.length > 0
       ? expense.payments
       : [{ userId: expense.paidBy, amountCents: expense.amountCents }]
 
-  return payments.filter((payment) => payment.amountCents > 0)
+  return payments
+    .map((payment) => ({
+      ...payment,
+      amountCents: roundCentsToCurrencyUnit(payment.amountCents),
+    }))
+    .filter((payment) => payment.amountCents > 0)
 }
 
 function normalizeInitialBills(expense: Expense): ExpensePayment[] {
   if (!expense.initialBillsEnabled) return []
 
-  return (expense.initialBills ?? []).filter((bill) => bill.amountCents > 0)
+  return (expense.initialBills ?? [])
+    .map((bill) => ({
+      ...bill,
+      amountCents: roundCentsToCurrencyUnit(bill.amountCents),
+    }))
+    .filter((bill) => bill.amountCents > 0)
 }
 
 function splitEqual(amountCents: number, participants: string[]) {
   const shares = new Map<string, number>()
-  if (participants.length === 0 || amountCents <= 0) return shares
+  const roundedAmountCents = roundCentsToCurrencyUnit(amountCents)
+  if (participants.length === 0 || roundedAmountCents <= 0) return shares
 
-  const baseShare = Math.floor(amountCents / participants.length)
-  const remainder = amountCents % participants.length
+  const amountUnits = Math.round(roundedAmountCents / CENTS_PER_CURRENCY_UNIT)
+  const baseShareUnits = Math.floor(amountUnits / participants.length)
+  const remainderUnits = amountUnits % participants.length
 
   participants.forEach((participantId, index) => {
-    shares.set(participantId, baseShare + (index < remainder ? 1 : 0))
+    shares.set(
+      participantId,
+      (baseShareUnits + (index < remainderUnits ? 1 : 0)) *
+        CENTS_PER_CURRENCY_UNIT
+    )
   })
 
   return shares
@@ -42,49 +66,125 @@ function splitPercentage(
   percentages: ExpenseShare[] = []
 ) {
   const percentByUser = new Map(
-    percentages.map((share) => [share.userId, Math.max(0, share.percentage)])
+    percentages.map((share) => [
+      share.userId,
+      Math.max(0, share.percentage ?? 0),
+    ])
   )
   const totalPercent = participants.reduce(
     (total, participantId) => total + (percentByUser.get(participantId) ?? 0),
     0
   )
 
-  if (amountCents <= 0 || participants.length === 0) return new Map<string, number>()
+  const roundedAmountCents = roundCentsToCurrencyUnit(amountCents)
+  if (roundedAmountCents <= 0 || participants.length === 0)
+    return new Map<string, number>()
   if (Math.abs(totalPercent - 100) > 0.01) return splitEqual(amountCents, participants)
 
+  const amountUnits = Math.round(roundedAmountCents / CENTS_PER_CURRENCY_UNIT)
   const rawShares = participants.map((participantId) => {
-    const raw = (amountCents * (percentByUser.get(participantId) ?? 0)) / 100
+    const raw = (amountUnits * (percentByUser.get(participantId) ?? 0)) / 100
     return {
       userId: participantId,
-      amountCents: Math.floor(raw),
+      amountUnits: Math.floor(raw),
       remainder: raw - Math.floor(raw),
     }
   })
 
   let remainingCents =
-    amountCents - rawShares.reduce((total, share) => total + share.amountCents, 0)
+    amountUnits - rawShares.reduce((total, share) => total + share.amountUnits, 0)
 
   rawShares
     .sort((a, b) => b.remainder - a.remainder)
     .forEach((share) => {
       if (remainingCents <= 0) return
-      share.amountCents += 1
+      share.amountUnits += 1
       remainingCents -= 1
     })
 
-  return new Map(rawShares.map((share) => [share.userId, share.amountCents]))
+  return new Map(
+    rawShares.map((share) => [
+      share.userId,
+      share.amountUnits * CENTS_PER_CURRENCY_UNIT,
+    ])
+  )
+}
+
+function normalizeFixedShares(
+  amountCents: number,
+  participants: string[],
+  shares: ExpenseShare[] = []
+) {
+  const roundedAmountCents = roundCentsToCurrencyUnit(amountCents)
+  if (participants.length === 0 || roundedAmountCents <= 0) return []
+
+  const amountByUser = new Map(
+    shares.map((share) => [
+      share.userId,
+      Math.max(0, roundCentsToCurrencyUnit(share.amountCents ?? 0)),
+    ])
+  )
+  const rawTotal = participants.reduce(
+    (total, participantId) => total + (amountByUser.get(participantId) ?? 0),
+    0
+  )
+
+  if (rawTotal <= 0) return distributeCents(roundedAmountCents, participants)
+
+  const amountUnits = Math.round(roundedAmountCents / CENTS_PER_CURRENCY_UNIT)
+  const rawShares = participants.map((participantId) => {
+    const raw = ((amountByUser.get(participantId) ?? 0) / rawTotal) * amountUnits
+    return {
+      userId: participantId,
+      amountUnits: Math.floor(raw),
+      remainder: raw - Math.floor(raw),
+    }
+  })
+
+  let remainingCents =
+    amountUnits - rawShares.reduce((total, share) => total + share.amountUnits, 0)
+
+  rawShares
+    .sort((a, b) => b.remainder - a.remainder)
+    .forEach((share) => {
+      if (remainingCents <= 0) return
+      share.amountUnits += 1
+      remainingCents -= 1
+    })
+
+  return rawShares.map(({ userId, amountUnits }) => ({
+    userId,
+    amountCents: amountUnits * CENTS_PER_CURRENCY_UNIT,
+  }))
+}
+
+function splitFixedAmount(
+  amountCents: number,
+  participants: string[],
+  shares: ExpenseShare[] = []
+) {
+  return new Map(
+    normalizeFixedShares(amountCents, participants, shares).map((share) => [
+      share.userId,
+      share.amountCents,
+    ])
+  )
 }
 
 function distributeCents(amountCents: number, userIds: string[]) {
-  if (amountCents <= 0 || userIds.length === 0) return []
+  const roundedAmountCents = roundCentsToCurrencyUnit(amountCents)
+  if (roundedAmountCents <= 0 || userIds.length === 0) return []
 
-  const baseAmount = Math.floor(amountCents / userIds.length)
-  const remainder = amountCents % userIds.length
+  const amountUnits = Math.round(roundedAmountCents / CENTS_PER_CURRENCY_UNIT)
+  const baseAmountUnits = Math.floor(amountUnits / userIds.length)
+  const remainderUnits = amountUnits % userIds.length
 
   return userIds
     .map((userId, index) => ({
       userId,
-      amountCents: baseAmount + (index < remainder ? 1 : 0),
+      amountCents:
+        (baseAmountUnits + (index < remainderUnits ? 1 : 0)) *
+        CENTS_PER_CURRENCY_UNIT,
     }))
     .filter((payment) => payment.amountCents > 0)
 }
@@ -109,7 +209,7 @@ function normalizePaymentTotal(
   payments: ExpensePayment[],
   fallbackPayers: string[]
 ) {
-  const targetAmount = Math.max(0, amountCents)
+  const targetAmount = Math.max(0, roundCentsToCurrencyUnit(amountCents))
   const nextPayments = mergePayments(payments)
   const paidTotal = nextPayments.reduce(
     (total, payment) => total + payment.amountCents,
@@ -146,7 +246,10 @@ function normalizePercentageShares(
   if (participants.length === 0) return []
 
   const shareByUser = new Map(
-    shares.map((share) => [share.userId, Math.max(0, share.percentage)])
+    shares.map((share) => [
+      share.userId,
+      Math.max(0, share.percentage ?? 0),
+    ])
   )
   const totalPercentage = participants.reduce(
     (total, participantId) => total + (shareByUser.get(participantId) ?? 0),
@@ -197,7 +300,7 @@ export function getExpenseSharedAmountCents(expense: Expense) {
     0
   )
 
-  return Math.max(0, expense.amountCents - initialTotal)
+  return Math.max(0, roundCentsToCurrencyUnit(expense.amountCents) - initialTotal)
 }
 
 export function rebalanceExpenseAfterMemberRemoval(
@@ -218,8 +321,9 @@ export function rebalanceExpenseAfterMemberRemoval(
   const nextParticipants = participants.length > 0 ? participants : remainingIds
   const participantSet = new Set(nextParticipants)
   const fallbackPayers = nextParticipants.length > 0 ? nextParticipants : remainingIds
+  const roundedExpenseAmountCents = roundCentsToCurrencyUnit(expense.amountCents)
   const payments = normalizePaymentTotal(
-    expense.amountCents,
+    roundedExpenseAmountCents,
     normalizePayments(expense).filter(
       (payment) =>
         payment.userId !== removedMemberId && remainingIdSet.has(payment.userId)
@@ -242,7 +346,13 @@ export function rebalanceExpenseAfterMemberRemoval(
     participantShares:
       expense.splitType === "percentage"
         ? normalizePercentageShares(nextParticipants, expense.participantShares)
-        : [],
+        : expense.splitType === "custom"
+          ? normalizeFixedShares(
+              roundedExpenseAmountCents,
+              nextParticipants,
+              expense.participantShares
+            )
+          : [],
   }
 }
 
@@ -260,9 +370,15 @@ export function calculateGroupBalances(group: Group, expenses: Expense[]) {
       balances.has(participantId)
     )
 
-    if (participants.length === 0 || expense.amountCents <= 0) continue
+    const expenseAmountCents = roundCentsToCurrencyUnit(expense.amountCents)
 
-    for (const payment of normalizePayments(expense)) {
+    if (participants.length === 0 || expenseAmountCents <= 0) continue
+
+    for (const payment of normalizePaymentTotal(
+      expenseAmountCents,
+      normalizePayments(expense),
+      participants
+    )) {
       if (!balances.has(payment.userId)) continue
       balances.set(
         payment.userId,
@@ -276,7 +392,7 @@ export function calculateGroupBalances(group: Group, expenses: Expense[]) {
       (total, bill) => total + bill.amountCents,
       0
     )
-    const sharedAmountCents = Math.max(0, expense.amountCents - initialTotal)
+    const sharedAmountCents = Math.max(0, expenseAmountCents - initialTotal)
 
     for (const bill of initialBills) {
       if (!participants.includes(bill.userId)) continue
@@ -286,7 +402,9 @@ export function calculateGroupBalances(group: Group, expenses: Expense[]) {
     const sharedShares =
       expense.splitType === "percentage"
         ? splitPercentage(sharedAmountCents, participants, expense.participantShares)
-        : splitEqual(sharedAmountCents, participants)
+        : expense.splitType === "custom"
+          ? splitFixedAmount(sharedAmountCents, participants, expense.participantShares)
+          : splitEqual(sharedAmountCents, participants)
 
     for (const [participantId, amountCents] of sharedShares) {
       owedByUser.set(

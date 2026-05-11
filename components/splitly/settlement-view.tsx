@@ -16,7 +16,8 @@ import {
 import { useSplitlyStore } from "@/store/splitly-store";
 
 export function SettlementView({ groupId }: { groupId: string }) {
-  const { groups, expenses: allExpenses } = useSplitlyStore();
+  const groups = useSplitlyStore((state) => state.groups);
+  const allExpenses = useSplitlyStore((state) => state.expenses);
   const { t } = useTranslation();
   const group = useMemo(
     () => groups.find((item) => item.id === groupId),
@@ -26,11 +27,11 @@ export function SettlementView({ groupId }: { groupId: string }) {
     () => allExpenses.filter((expense) => expense.groupId === groupId),
     [allExpenses, groupId],
   );
-  const settlements = useMemo(
-    () =>
-      group ? optimizeSettlements(calculateGroupBalances(group, expenses)) : [],
+  const balances = useMemo(
+    () => (group ? calculateGroupBalances(group, expenses) : []),
     [expenses, group],
   );
+  const settlements = useMemo(() => optimizeSettlements(balances), [balances]);
 
   if (!group) {
     return (
@@ -64,7 +65,13 @@ export function SettlementView({ groupId }: { groupId: string }) {
         </div>
         <GroupNav groupId={group.id} />
       </section>
-      <SettlementList group={group} settlements={settlements} copyable />
+      <SettlementList
+        group={group}
+        expenses={expenses}
+        balances={balances}
+        settlements={settlements}
+        copyable
+      />
     </div>
   );
 }

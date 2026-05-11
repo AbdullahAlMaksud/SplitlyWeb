@@ -4,6 +4,7 @@ import {
   calculateGroupBalances,
   optimizeSettlements,
   rebalanceExpenseAfterMemberRemoval,
+  roundCentsToCurrencyUnit,
 } from "@/lib/calculations/settlement"
 import type { Balance, Expense, Group } from "@/lib/types"
 
@@ -15,6 +16,11 @@ function settlements(balances: Balance[]) {
 }
 
 describe("optimizeSettlements", () => {
+  it("rounds currency units at .50 and above", () => {
+    expect(roundCentsToCurrencyUnit(5049)).toBe(5000)
+    expect(roundCentsToCurrencyUnit(5050)).toBe(5100)
+  })
+
   it("returns no transactions for balanced users", () => {
     expect(
       settlements([
@@ -50,7 +56,7 @@ describe("optimizeSettlements", () => {
     ])
   })
 
-  it("keeps cent rounding balanced for equal split expenses", () => {
+  it("keeps whole-unit rounding balanced for equal split expenses", () => {
     const group: Group = {
       id: "group",
       name: "Trip",
@@ -59,17 +65,16 @@ describe("optimizeSettlements", () => {
       members: [
         { id: "a", name: "A", color: "#fff" },
         { id: "b", name: "B", color: "#fff" },
-        { id: "c", name: "C", color: "#fff" },
       ],
     }
     const expenses: Expense[] = [
       {
         id: "expense",
         groupId: "group",
-        amountCents: 100,
+        amountCents: 10100,
         paidBy: "a",
         splitType: "equal",
-        participants: ["a", "b", "c"],
+        participants: ["a", "b"],
         note: "Snack",
         createdAt: "2026-05-09T00:00:00.000Z",
       },
@@ -78,9 +83,8 @@ describe("optimizeSettlements", () => {
     const balances = calculateGroupBalances(group, expenses)
     expect(balances.reduce((sum, balance) => sum + balance.balanceCents, 0)).toBe(0)
     expect(balances).toEqual([
-      { userId: "a", balanceCents: 66 },
-      { userId: "b", balanceCents: -33 },
-      { userId: "c", balanceCents: -33 },
+      { userId: "a", balanceCents: 5000 },
+      { userId: "b", balanceCents: -5000 },
     ])
   })
 
@@ -127,6 +131,44 @@ describe("optimizeSettlements", () => {
       { userId: "a", balanceCents: 1500 },
       { userId: "b", balanceCents: -100 },
       { userId: "c", balanceCents: -1400 },
+    ])
+  })
+
+  it("supports fixed amount splits", () => {
+    const group: Group = {
+      id: "group",
+      name: "Dinner",
+      icon: "utensils",
+      createdAt: "2026-05-09T00:00:00.000Z",
+      members: [
+        { id: "a", name: "A", color: "#fff" },
+        { id: "b", name: "B", color: "#fff" },
+        { id: "c", name: "C", color: "#fff" },
+      ],
+    }
+    const expenses: Expense[] = [
+      {
+        id: "expense",
+        groupId: "group",
+        amountCents: 12000,
+        payments: [{ userId: "a", amountCents: 12000 }],
+        paidBy: "a",
+        splitType: "custom",
+        participants: ["a", "b", "c"],
+        participantShares: [
+          { userId: "a", amountCents: 2000 },
+          { userId: "b", amountCents: 4000 },
+          { userId: "c", amountCents: 6000 },
+        ],
+        note: "Dinner",
+        createdAt: "2026-05-09T00:00:00.000Z",
+      },
+    ]
+
+    expect(calculateGroupBalances(group, expenses)).toEqual([
+      { userId: "a", balanceCents: 10000 },
+      { userId: "b", balanceCents: -4000 },
+      { userId: "c", balanceCents: -6000 },
     ])
   })
 

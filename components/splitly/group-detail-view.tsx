@@ -1,19 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Plus } from "lucide-react";
-import { useMemo } from "react";
+import { ArrowLeft, Pencil, Plus } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AddExpenseDialog } from "@/components/splitly/add-expense-dialog";
+import { CurrencyAmount } from "@/components/currency-amount";
 import { ExpenseTable } from "@/components/splitly/expense-table";
-import { GroupIcon } from "@/components/splitly/group-icon";
+import {
+  GROUP_ICON_OPTIONS,
+  GroupIcon,
+  getGroupIconLabel,
+} from "@/components/splitly/group-icon";
 import { GroupNav } from "@/components/splitly/group-nav";
 import { MemberList } from "@/components/splitly/member-list";
 import { SettlementList } from "@/components/splitly/settlement-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -26,12 +46,18 @@ import {
   calculateGroupBalances,
   optimizeSettlements,
 } from "@/lib/calculations/settlement";
-import { formatCurrency, formatNumber, memberName } from "@/lib/formatters";
+import { formatNumber, memberName } from "@/lib/formatters";
+import type { GroupIcon as GroupIconType } from "@/lib/types";
 import { useSplitlyStore } from "@/store/splitly-store";
 
 export function GroupDetailView({ groupId }: { groupId: string }) {
-  const { groups, expenses: allExpenses } = useSplitlyStore();
+  const groups = useSplitlyStore((state) => state.groups);
+  const allExpenses = useSplitlyStore((state) => state.expenses);
+  const updateGroup = useSplitlyStore((state) => state.updateGroup);
   const { t } = useTranslation();
+  const [editGroupOpen, setEditGroupOpen] = useState(false);
+  const [editGroupName, setEditGroupName] = useState("");
+  const [editGroupIcon, setEditGroupIcon] = useState<GroupIconType>("wallet");
   const group = useMemo(
     () => groups.find((item) => item.id === groupId),
     [groupId, groups],
@@ -81,9 +107,23 @@ export function GroupDetailView({ groupId }: { groupId: string }) {
             <GroupIcon icon={group.icon} className="size-7" />
           </span>
           <div>
-            <h1 className="text-4xl font-semibold tracking-normal">
-              {group.name}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-4xl font-semibold tracking-normal">
+                {group.name}
+              </h1>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t("actions.editGroup")}
+                onClick={() => {
+                  setEditGroupName(group.name);
+                  setEditGroupIcon(group.icon);
+                  setEditGroupOpen(true);
+                }}
+              >
+                <Pencil className="size-4" />
+              </Button>
+            </div>
             <p className="text-muted-foreground">
               {t("group.memberStats", {
                 memberCount: group.members.length,
@@ -145,7 +185,7 @@ export function GroupDetailView({ groupId }: { groupId: string }) {
                           )}
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {formatCurrency(balance.balanceCents)}
+                          <CurrencyAmount cents={balance.balanceCents} />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -164,11 +204,65 @@ export function GroupDetailView({ groupId }: { groupId: string }) {
             </CardContent>
           </Card>
 
-          <SettlementList group={group} settlements={settlements} />
+          <SettlementList
+            group={group}
+            expenses={expenses}
+            balances={balances}
+            settlements={settlements}
+          />
         </div>
 
         <MemberList group={group} />
       </div>
+
+      <Dialog open={editGroupOpen} onOpenChange={setEditGroupOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("group.editTitle")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-group-name">{t("group.groupName")}</Label>
+              <Input
+                id="edit-group-name"
+                value={editGroupName}
+                onChange={(e) => setEditGroupName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("group.icon")}</Label>
+              <Select
+                value={editGroupIcon}
+                onValueChange={(v) => setEditGroupIcon(v as GroupIconType)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {GROUP_ICON_OPTIONS.map((icon) => (
+                    <SelectItem key={icon} value={icon}>
+                      {getGroupIconLabel(icon, t)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              className="w-full"
+              disabled={!editGroupName.trim()}
+              onClick={() => {
+                updateGroup(groupId, {
+                  name: editGroupName,
+                  icon: editGroupIcon,
+                });
+                setEditGroupOpen(false);
+              }}
+            >
+              {t("actions.save")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

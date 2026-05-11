@@ -1,8 +1,12 @@
 "use client";
 
+import { Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { AddExpenseDialog } from "@/components/splitly/add-expense-dialog";
+import { CurrencyAmount } from "@/components/currency-amount";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -16,8 +20,9 @@ import {
   getExpensePayments,
   getExpenseSharedAmountCents,
 } from "@/lib/calculations/settlement";
-import { formatCurrency, formatDate, memberName } from "@/lib/formatters";
+import { formatDate, memberName } from "@/lib/formatters";
 import type { Expense, Group } from "@/lib/types";
+import { useSplitlyStore } from "@/store/splitly-store";
 
 export function ExpenseTable({
   group,
@@ -27,6 +32,7 @@ export function ExpenseTable({
   expenses: Expense[];
 }) {
   const { t } = useTranslation();
+  const deleteExpense = useSplitlyStore((state) => state.deleteExpense);
 
   if (expenses.length === 0) {
     return (
@@ -46,6 +52,7 @@ export function ExpenseTable({
             <TableHead>{t("table.split")}</TableHead>
             <TableHead>{t("table.date")}</TableHead>
             <TableHead className="text-right">{t("table.amount")}</TableHead>
+            <TableHead className="w-20" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -55,30 +62,32 @@ export function ExpenseTable({
                 {expense.note || t("table.sharedExpense")}
               </TableCell>
               <TableCell>
-                {getExpensePayments(expense)
-                  .map(
-                    (payment) =>
-                      `${memberName(group.members, payment.userId)} ${formatCurrency(
-                        payment.amountCents,
-                      )}`,
-                  )
-                  .join(", ")}
+                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                  {getExpensePayments(expense).map((payment) => (
+                    <span key={payment.userId}>
+                      {memberName(group.members, payment.userId)}{" "}
+                      <CurrencyAmount cents={payment.amountCents} />
+                    </span>
+                  ))}
+                </div>
               </TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-1">
                   <Badge variant="secondary">
                     {expense.splitType === "percentage"
                       ? t("table.percentage")
-                      : t("table.equal")}
+                      : expense.splitType === "custom"
+                        ? t("table.custom")
+                        : t("table.equal")}
                   </Badge>
                   {expense.initialBillsEnabled &&
                   getExpenseInitialBills(expense).length > 0 ? (
                     <Badge variant="outline">
-                      {t("table.sharedAmount", {
-                        amount: formatCurrency(
-                          getExpenseSharedAmountCents(expense),
-                        ),
-                      })}
+                      {t("table.sharedAmount", { amount: "" })}
+                      <CurrencyAmount
+                        cents={getExpenseSharedAmountCents(expense)}
+                        className="ml-1"
+                      />
                     </Badge>
                   ) : null}
                 </div>
@@ -87,7 +96,28 @@ export function ExpenseTable({
                 {formatDate(expense.createdAt)}
               </TableCell>
               <TableCell className="text-right font-mono">
-                {formatCurrency(expense.amountCents)}
+                <CurrencyAmount cents={expense.amountCents} />
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center justify-end gap-1">
+                  <AddExpenseDialog groupId={group.id} expense={expense}>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t("actions.edit")}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                  </AddExpenseDialog>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t("actions.delete")}
+                    onClick={() => deleteExpense(expense.id)}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}

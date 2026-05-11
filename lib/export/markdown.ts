@@ -12,7 +12,8 @@ import type {
 
 import { getExpensePayments } from "@/lib/calculations/settlement";
 import { formatCurrency, formatDate, memberName } from "@/lib/formatters";
-import type { Expense, Group, SettlementTransaction } from "@/lib/types";
+import { DEFAULT_CURRENCY } from "@/lib/currency";
+import type { CurrencyCode, Expense, Group, SettlementTransaction } from "@/lib/types";
 
 function text(value: string): Text {
   return { type: "text", value };
@@ -43,10 +44,12 @@ export function generateMarkdownReport({
   group,
   expenses,
   settlements,
+  currency = DEFAULT_CURRENCY,
 }: {
   group: Group;
   expenses: Expense[];
   settlements: SettlementTransaction[];
+  currency?: CurrencyCode;
 }) {
   const members = group.members;
   const nodes: Content[] = [
@@ -77,10 +80,11 @@ export function generateMarkdownReport({
                         `${memberName(members, payment.userId)} ${formatCurrency(
                           payment.amountCents,
                           "en",
+                          currency,
                         )}`,
                     )
                     .join(", ");
-            return `${label}: ${formatCurrency(expense.amountCents, "en")} (paid by ${paidBy})`;
+            return `${label}: ${formatCurrency(expense.amountCents, "en", currency)} (paid by ${paidBy})`;
           })
         : ["No expenses recorded"],
     ),
@@ -92,7 +96,7 @@ export function generateMarkdownReport({
               `${memberName(members, settlement.fromId)} pays ${memberName(
                 members,
                 settlement.toId,
-              )} ${formatCurrency(settlement.amountCents, "en")}`,
+              )} ${formatCurrency(settlement.amountCents, "en", currency)}`,
           )
         : ["No settlements needed"],
     ),

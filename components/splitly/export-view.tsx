@@ -16,7 +16,8 @@ import {
 import { useSplitlyStore } from "@/store/splitly-store";
 
 export function ExportView({ groupId }: { groupId: string }) {
-  const { groups, expenses: allExpenses } = useSplitlyStore();
+  const groups = useSplitlyStore((state) => state.groups);
+  const allExpenses = useSplitlyStore((state) => state.expenses);
   const { t } = useTranslation();
   const group = useMemo(
     () => groups.find((item) => item.id === groupId),

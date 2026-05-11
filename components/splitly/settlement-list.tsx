@@ -1,19 +1,24 @@
 "use client";
 
-import { Check, Copy, MoveRight } from "lucide-react";
+import { Check, Copy, Download, MoveRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
+import { CurrencyAmount } from "@/components/currency-amount";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { downloadSettlementStatementImage } from "@/lib/export/statement-image";
+import { DEFAULT_CURRENCY } from "@/lib/currency";
 import { formatCurrency, memberName } from "@/lib/formatters";
-import type { Group, SettlementTransaction } from "@/lib/types";
+import type { Balance, CurrencyCode, Expense, Group, SettlementTransaction } from "@/lib/types";
+import { useSplitlyStore } from "@/store/splitly-store";
 
 export function settlementText(
   group: Group,
   settlements: SettlementTransaction[],
   t: TFunction,
+  currency: CurrencyCode = DEFAULT_CURRENCY,
 ) {
   if (settlements.length === 0) return t("settlement.noneNeeded");
 
@@ -22,7 +27,7 @@ export function settlementText(
       t("settlement.pays", {
         from: memberName(group.members, settlement.fromId),
         to: memberName(group.members, settlement.toId),
-        amount: formatCurrency(settlement.amountCents),
+        amount: formatCurrency(settlement.amountCents, undefined, currency),
       }),
     )
     .join("\n");
@@ -30,18 +35,26 @@ export function settlementText(
 
 export function SettlementList({
   group,
+  expenses = [],
+  balances = [],
   settlements,
   copyable = false,
 }: {
   group: Group;
+  expenses?: Expense[];
+  balances?: Balance[];
   settlements: SettlementTransaction[];
   copyable?: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const currency = useSplitlyStore(
+    (state) => state.currentUser.currency ?? DEFAULT_CURRENCY,
+  );
   const [copied, setCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState<string | null>(null);
   const text = useMemo(
-    () => settlementText(group, settlements, t),
-    [group, settlements, t],
+    () => settlementText(group, settlements, t, currency),
+    [currency, group, settlements, t],
   );
 
   return (
@@ -72,23 +85,56 @@ export function SettlementList({
             {t("settlement.everyoneSettled")}
           </div>
         ) : (
-          settlements.map((settlement, index) => (
-            <div
-              key={`${settlement.fromId}-${settlement.toId}-${index}`}
-              className="grid items-center gap-3 rounded-md border border-white/15 bg-white/10 p-4 backdrop-blur-xl sm:grid-cols-[1fr_auto_1fr_auto]"
-            >
-              <span className="font-medium">
-                {memberName(group.members, settlement.fromId)}
-              </span>
-              <MoveRight className="size-4 text-muted-foreground" />
-              <span className="font-medium">
-                {memberName(group.members, settlement.toId)}
-              </span>
-              <span className="font-mono text-lg font-semibold text-primary">
-                {formatCurrency(settlement.amountCents)}
-              </span>
-            </div>
-          ))
+          settlements.map((settlement, index) => {
+            const key = `${settlement.fromId}-${settlement.toId}-${index}`;
+            const fromName = memberName(group.members, settlement.fromId);
+            const toName = memberName(group.members, settlement.toId);
+            const imageLabel = t("settlement.imageAria", {
+              from: fromName,
+              to: toName,
+            });
+
+            return (
+              <div
+                key={key}
+                className="grid items-center gap-3 rounded-md border border-white/15 bg-white/10 p-4 backdrop-blur-xl sm:grid-cols-[1fr_auto_1fr_auto_auto]"
+              >
+                <span className="font-medium">{fromName}</span>
+                <MoveRight className="size-4 text-muted-foreground" />
+                <span className="font-medium">{toName}</span>
+                <span className="font-mono text-lg font-semibold text-primary">
+                  <CurrencyAmount cents={settlement.amountCents} />
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label={imageLabel}
+                  title={imageLabel}
+                  className="justify-self-start sm:justify-self-end"
+                  onClick={async () => {
+                    await downloadSettlementStatementImage({
+                      group,
+                      expenses,
+                      balances,
+                      settlement,
+                      language: i18n.resolvedLanguage,
+                      currency,
+                      createdAt: new Date(),
+                    });
+                    setDownloaded(key);
+                    window.setTimeout(() => setDownloaded(null), 1400);
+                  }}
+                >
+                  {downloaded === key ? (
+                    <Check className="size-4" />
+                  ) : (
+                    <Download className="size-4" />
+                  )}
+                  {t("actions.downloadImage")}
+                </Button>
+              </div>
+            );
+          })
         )}
       </CardContent>
     </Card>

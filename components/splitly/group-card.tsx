@@ -1,30 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import { memo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { CurrencyAmount } from "@/components/currency-amount";
+import { formatDate } from "@/lib/formatters";
 import type { Expense, Group } from "@/lib/types";
 import { GroupIcon } from "@/components/splitly/group-icon";
 import { MemberAvatar } from "@/components/splitly/member-avatar";
-import { calculateGroupBalances } from "@/lib/calculations/settlement";
 
-export function GroupCard({
+export const GroupCard = memo(function GroupCard({
   group,
   expenses,
-  currentUserId,
+  balanceCents,
 }: {
   group: Group;
   expenses: Expense[];
-  currentUserId: string;
+  balanceCents: number;
 }) {
   const { t } = useTranslation();
-  const balance =
-    calculateGroupBalances(group, expenses).find(
-      (item) => item.userId === currentUserId,
-    )?.balanceCents ?? 0;
   const visibleMembers = group.members.slice(0, 3);
   const hiddenCount = Math.max(group.members.length - visibleMembers.length, 0);
   const lastActivity = expenses[0]?.createdAt ?? group.createdAt;
@@ -47,17 +44,16 @@ export function GroupCard({
                 </p>
               </div>
             </div>
-            {balance === 0 ? (
+            {balanceCents === 0 ? (
               <Badge variant="secondary">{t("group.settled")}</Badge>
-            ) : balance > 0 ? (
+            ) : balanceCents > 0 ? (
               <Badge className="bg-primary/15 text-primary hover:bg-primary/15">
-                {t("group.youAreOwed", { amount: formatCurrency(balance) })}
+                {t("table.owedStatus")} <CurrencyAmount cents={balanceCents} />
               </Badge>
             ) : (
               <Badge className="bg-red-500/15 text-red-200 hover:bg-red-500/15">
-                {t("group.youOwe", {
-                  amount: formatCurrency(Math.abs(balance)),
-                })}
+                {t("table.owesStatus")}{" "}
+                <CurrencyAmount cents={Math.abs(balanceCents)} />
               </Badge>
             )}
           </div>
@@ -82,4 +78,4 @@ export function GroupCard({
       </Card>
     </Link>
   );
-}
+});

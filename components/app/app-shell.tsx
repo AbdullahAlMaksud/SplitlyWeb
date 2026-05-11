@@ -29,8 +29,17 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { CURRENCY_OPTIONS, DEFAULT_CURRENCY } from "@/lib/currency";
 import { initials } from "@/lib/formatters";
+import type { CurrencyCode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import i18n from "@/lib/i18n";
 import { useSplitlyStore } from "@/store/splitly-store";
@@ -41,10 +50,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const { t } = useTranslation();
-  const splitly = useSplitlyStore();
-  const { hasHydrated, currentUser, updateCurrentUser } = splitly;
+  const hasHydrated = useSplitlyStore((state) => state.hasHydrated);
+  const currentUser = useSplitlyStore((state) => state.currentUser);
+  const updateCurrentUser = useSplitlyStore((state) => state.updateCurrentUser);
   const [profileName, setProfileName] = useState(currentUser.name);
   const [profileColor, setProfileColor] = useState(currentUser.color);
+  const [profileCurrency, setProfileCurrency] = useState<CurrencyCode>(
+    currentUser.currency ?? DEFAULT_CURRENCY,
+  );
   const [profileOpen, setProfileOpen] = useState(false);
 
   const navItems = [
@@ -151,6 +164,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 if (nextOpen) {
                   setProfileName(currentUser.name);
                   setProfileColor(currentUser.color);
+                  setProfileCurrency(currentUser.currency ?? DEFAULT_CURRENCY);
                 }
                 setProfileOpen(nextOpen);
               }}
@@ -204,12 +218,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       ))}
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label>{t("profile.currency")}</Label>
+                    <Select
+                      value={profileCurrency}
+                      onValueChange={(value) =>
+                        setProfileCurrency(value as CurrencyCode)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CURRENCY_OPTIONS.map((currency) => (
+                          <SelectItem key={currency.code} value={currency.code}>
+                            {currency.shortLabel} · {currency.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <Button
                     className="w-full"
                     onClick={() => {
                       updateCurrentUser({
                         name: profileName,
                         color: profileColor,
+                        currency: profileCurrency,
                       });
                       setProfileOpen(false);
                     }}

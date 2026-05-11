@@ -3,8 +3,9 @@
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { CurrencyAmount } from "@/components/currency-amount";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatCurrency, formatNumber } from "@/lib/formatters";
+import { formatNumber } from "@/lib/formatters";
 
 export function BalanceSummaryCard({
   owedCents,
@@ -28,7 +29,7 @@ export function BalanceSummaryCard({
             {t("summary.owed")}
           </div>
           <div className="font-mono text-4xl font-semibold tracking-normal md:text-6xl">
-            {formatCurrency(owedCents)}
+            <CurrencyAmount cents={owedCents} />
           </div>
           <p className="text-base text-muted-foreground">
             {t("summary.activeGroups", {
@@ -43,7 +44,7 @@ export function BalanceSummaryCard({
             {t("summary.owe")}
           </div>
           <div className="font-mono text-4xl font-semibold tracking-normal md:text-6xl">
-            {formatCurrency(oweCents)}
+            <CurrencyAmount cents={oweCents} />
           </div>
           <p className="text-base text-muted-foreground">
             {t("summary.individuals", {

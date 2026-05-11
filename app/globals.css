@@ -50,38 +50,38 @@
 }
 
 :root {
-  --background: oklch(0.95 0.02 171);
-  --foreground: oklch(0.2 0.03 184);
-  --card: oklch(0.99 0.016 171 / 64%);
-  --card-foreground: oklch(0.2 0.03 184);
-  --popover: oklch(0.99 0.015 171 / 82%);
-  --popover-foreground: oklch(0.2 0.03 184);
-  --primary: oklch(0.55 0.11 166);
+  --background: oklch(0.96 0.018 167);
+  --foreground: oklch(0.12 0.04 184);
+  --card: oklch(0.97 0.014 167 / 82%);
+  --card-foreground: oklch(0.12 0.04 184);
+  --popover: oklch(0.97 0.014 167 / 92%);
+  --popover-foreground: oklch(0.12 0.04 184);
+  --primary: oklch(0.42 0.14 166);
   --primary-foreground: oklch(0.97 0.01 172);
-  --secondary: oklch(0.96 0.015 171 / 62%);
-  --secondary-foreground: oklch(0.23 0.03 184);
-  --muted: oklch(0.98 0.01 171 / 44%);
-  --muted-foreground: oklch(0.44 0.02 185);
-  --accent: oklch(0.82 0.05 167 / 44%);
-  --accent-foreground: oklch(0.2 0.03 184);
+  --secondary: oklch(0.93 0.016 167 / 80%);
+  --secondary-foreground: oklch(0.15 0.04 184);
+  --muted: oklch(0.91 0.014 167 / 70%);
+  --muted-foreground: oklch(0.34 0.04 182);
+  --accent: oklch(0.82 0.06 165 / 60%);
+  --accent-foreground: oklch(0.12 0.04 184);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.95 0.012 171 / 30%);
-  --input: oklch(0.97 0.01 171 / 40%);
-  --ring: oklch(0.64 0.1 166);
+  --border: oklch(0.72 0.04 168 / 55%);
+  --input: oklch(0.93 0.014 167 / 70%);
+  --ring: oklch(0.42 0.14 166);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 1rem;
-  --sidebar: oklch(0.98 0.01 171);
-  --sidebar-foreground: oklch(0.2 0.02 184);
-  --sidebar-primary: oklch(0.34 0.05 168);
+  --sidebar: oklch(0.94 0.022 167);
+  --sidebar-foreground: oklch(0.12 0.04 184);
+  --sidebar-primary: oklch(0.34 0.12 168);
   --sidebar-primary-foreground: oklch(0.97 0.008 172);
-  --sidebar-accent: oklch(0.96 0.014 171);
-  --sidebar-accent-foreground: oklch(0.23 0.03 184);
-  --sidebar-border: oklch(0.93 0.01 171);
-  --sidebar-ring: oklch(0.63 0.08 166);
+  --sidebar-accent: oklch(0.9 0.024 167);
+  --sidebar-accent-foreground: oklch(0.15 0.04 184);
+  --sidebar-border: oklch(0.78 0.03 168 / 60%);
+  --sidebar-ring: oklch(0.42 0.14 166);
 }
 
 .dark {
@@ -127,7 +127,7 @@
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
-    background-color: rgb(223 250 236);
+    background-color: rgb(220 245 234);
     isolation: isolate;
     position: relative;
   }
@@ -142,57 +142,55 @@
     overflow-x: hidden;
   }
   body::before {
-    animation: splitly-emerald-flow 22s ease-in-out infinite alternate;
     background:
       radial-gradient(
-        circle at 18% 18%,
-        rgb(16 185 129 / 0.2),
+        circle at 15% 18%,
+        rgb(134 239 172 / 0.6),
+        transparent 32%
+      ),
+      radial-gradient(
+        circle at 82% 18%,
+        rgb(110 231 183 / 0.5),
+        transparent 30%
+      ),
+      radial-gradient(
+        circle at 72% 78%,
+        rgb(52 211 153 / 0.38),
         transparent 28%
       ),
       radial-gradient(
-        circle at 82% 20%,
-        rgb(5 150 105 / 0.34),
-        transparent 34%
+        circle at 18% 80%,
+        rgb(16 185 129 / 0.32),
+        transparent 30%
       ),
-      radial-gradient(circle at 72% 76%, rgb(4 120 87 / 0.28), transparent 30%),
-      radial-gradient(circle at 18% 78%, rgb(6 95 70 / 0.24), transparent 32%),
       radial-gradient(
-        circle at 50% 52%,
-        rgb(110 231 183 / 0.12),
-        transparent 42%
+        circle at 50% 50%,
+        rgb(167 243 208 / 0.28),
+        transparent 40%
       ),
       linear-gradient(
-        135deg,
-        rgb(235 255 244) 0%,
-        rgb(182 242 218) 32%,
-        rgb(20 83 45) 100%
+        145deg,
+        rgb(236 253 245) 0%,
+        rgb(209 250 229) 40%,
+        rgb(236 253 244) 100%
       );
-    background-size:
-      150% 150%,
-      155% 155%,
-      165% 165%,
-      160% 160%,
-      140% 140%,
-      100% 100%;
+    animation: splitly-light-flow 22s ease-in-out infinite;
     content: "";
-    filter: saturate(1.08) contrast(1.02);
     inset: 0;
     pointer-events: none;
     position: fixed;
     z-index: -2;
   }
   body::after {
-    animation: splitly-grid-drift 20s ease-in-out infinite alternate;
     background:
-      linear-gradient(rgb(236 253 245 / 0.08) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(236 253 245 / 0.06) 1px, transparent 1px),
-      linear-gradient(rgb(6 78 59 / 0.14), rgb(6 78 59 / 0.14));
+      linear-gradient(rgb(6 95 70 / 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(6 95 70 / 0.08) 1px, transparent 1px);
     background-size:
       72px 72px,
-      72px 72px,
-      auto;
+      72px 72px;
     content: "";
     inset: 0;
+    opacity: 1;
     pointer-events: none;
     position: fixed;
     z-index: -1;
@@ -223,40 +221,32 @@
 
 @layer utilities {
   .glass-panel {
-    @apply relative overflow-hidden border border-white/18 bg-white/12 shadow-[0_24px_90px_rgba(0,0,0,0.20)] backdrop-blur-2xl backdrop-saturate-150 dark:border-emerald-100/12 dark:bg-emerald-950/18;
+    @apply relative overflow-hidden border border-emerald-200/70 bg-white/75 shadow-[0_20px_70px_rgba(6,78,59,0.14)] backdrop-blur-2xl backdrop-saturate-150 dark:border-emerald-100/12 dark:bg-emerald-950/18;
   }
 
   .glass-nav {
-    @apply relative overflow-hidden border border-white/18 bg-white/12 shadow-[0_18px_60px_rgba(0,0,0,0.18)] backdrop-blur-2xl backdrop-saturate-150 dark:border-emerald-100/12 dark:bg-emerald-950/24;
+    @apply relative overflow-hidden border border-emerald-200/60 bg-white/80 shadow-[0_18px_56px_rgba(6,78,59,0.12)] backdrop-blur-2xl backdrop-saturate-150 dark:border-emerald-100/12 dark:bg-emerald-950/24;
   }
 
   .gradient-text {
     background-image: linear-gradient(
-      90deg,
-      rgb(187 247 208),
-      rgb(204 251 241),
-      rgb(236 252 203)
+      135deg,
+      oklch(0.28 0.16 164),
+      oklch(0.36 0.14 168),
+      oklch(0.3 0.15 160)
     );
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
 
-  .glass-panel::after,
-  .glass-nav::after {
-    animation: splitly-sheen 9s linear infinite;
-    background: linear-gradient(
-      120deg,
-      transparent 18%,
-      rgb(236 253 245 / 0.04) 42%,
-      rgb(236 253 245 / 0.22) 50%,
-      rgb(236 253 245 / 0.04) 58%,
-      transparent 82%
+  .dark .gradient-text {
+    background-image: linear-gradient(
+      90deg,
+      rgb(187 247 208),
+      rgb(204 251 241),
+      rgb(236 252 203)
     );
-    content: "";
-    inset: 0;
-    pointer-events: none;
-    position: absolute;
   }
 
   .glow-border {
@@ -404,15 +394,6 @@
   }
 }
 
-@keyframes splitly-sheen {
-  0% {
-    transform: translateX(-55%);
-  }
-  100% {
-    transform: translateX(55%);
-  }
-}
-
 @keyframes splitly-grid-drift {
   0% {
     background-position:
@@ -427,6 +408,45 @@
       -18px -14px,
       0 0;
     opacity: 1;
+  }
+}
+
+@keyframes splitly-light-flow {
+  0% {
+    background-position:
+      15% 18%,
+      82% 18%,
+      72% 78%,
+      18% 80%,
+      50% 50%,
+      0% 0%;
+  }
+  33% {
+    background-position:
+      22% 28%,
+      74% 12%,
+      64% 68%,
+      24% 72%,
+      46% 56%,
+      0% 0%;
+  }
+  66% {
+    background-position:
+      10% 14%,
+      88% 28%,
+      78% 72%,
+      14% 84%,
+      54% 44%,
+      0% 0%;
+  }
+  100% {
+    background-position:
+      15% 18%,
+      82% 18%,
+      72% 78%,
+      18% 80%,
+      50% 50%,
+      0% 0%;
   }
 }
 
@@ -455,8 +475,6 @@
 @media (prefers-reduced-motion: reduce) {
   body::before,
   .glow-border::before,
-  .glass-panel::after,
-  .glass-nav::after,
   .shell-enter,
   .section-glide {
     animation: none;

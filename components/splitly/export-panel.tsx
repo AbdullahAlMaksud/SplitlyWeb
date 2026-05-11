@@ -7,10 +7,12 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DEFAULT_CURRENCY } from "@/lib/currency";
 import { downloadTextFile } from "@/lib/export/download";
 import { generateMarkdownReport } from "@/lib/export/markdown";
 import { downloadPdfReport } from "@/lib/export/pdf";
 import type { Expense, Group, SettlementTransaction } from "@/lib/types";
+import { useSplitlyStore } from "@/store/splitly-store";
 
 export function ExportPanel({
   group,
@@ -22,10 +24,13 @@ export function ExportPanel({
   settlements: SettlementTransaction[];
 }) {
   const { t } = useTranslation();
+  const currency = useSplitlyStore(
+    (state) => state.currentUser.currency ?? DEFAULT_CURRENCY,
+  );
   const [copied, setCopied] = useState<"markdown" | "link" | null>(null);
   const markdown = useMemo(
-    () => generateMarkdownReport({ group, expenses, settlements }),
-    [group, expenses, settlements],
+    () => generateMarkdownReport({ group, expenses, settlements, currency }),
+    [currency, group, expenses, settlements],
   );
   const filename = `${group.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-splitly-report.md`;
 
@@ -69,7 +74,9 @@ export function ExportPanel({
           </Button>
           <Button
             variant="outline"
-            onClick={() => downloadPdfReport({ group, expenses, settlements })}
+            onClick={() =>
+              downloadPdfReport({ group, expenses, settlements, currency })
+            }
           >
             <Download className="size-4" />
             {t("actions.downloadPdf")}

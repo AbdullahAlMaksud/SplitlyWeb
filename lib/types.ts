@@ -1,5 +1,7 @@
 export type SplitType = "equal" | "custom" | "percentage"
 
+export type CurrencyCode = "BDT" | "USD" | "EUR" | "GBP" | "INR"
+
 export type GroupIcon = "wallet" | "plane" | "utensils" | "home" | "sparkles"
 
 export type CurrentUserProfile = {
@@ -7,6 +9,7 @@ export type CurrentUserProfile = {
   name: string
   avatar?: string
   color: string
+  currency: CurrencyCode
 }
 
 export type Member = {
@@ -46,7 +49,8 @@ export type ExpensePayment = {
 
 export type ExpenseShare = {
   userId: string
-  percentage: number
+  percentage?: number
+  amountCents?: number
 }
 
 export type Balance = {

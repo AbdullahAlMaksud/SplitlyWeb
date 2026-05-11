@@ -3,13 +3,15 @@ import {
   getExpensePayments,
   getExpenseSharedAmountCents,
 } from "@/lib/calculations/settlement";
+import { DEFAULT_CURRENCY } from "@/lib/currency";
 import { formatCurrency, formatDate, memberName } from "@/lib/formatters";
-import type { Expense, Group, SettlementTransaction } from "@/lib/types";
+import type { CurrencyCode, Expense, Group, SettlementTransaction } from "@/lib/types";
 
 type PdfReportInput = {
   group: Group;
   expenses: Expense[];
   settlements: SettlementTransaction[];
+  currency?: CurrencyCode;
 };
 
 type Rgb = [number, number, number];
@@ -21,6 +23,47 @@ const paper: Rgb = [248, 250, 252];
 const teal: Rgb = [13, 148, 136];
 const sky: Rgb = [14, 165, 233];
 const indigo: Rgb = [79, 70, 229];
+const pdfFontName = "NotoSansBengali";
+
+function arrayBufferToBinaryString(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = "";
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+
+  return binary;
+}
+
+async function loadPdfFonts(doc: import("jspdf").jsPDF) {
+  try {
+    const [regular, bold] = await Promise.all([
+      fetch("/fonts/NotoSansBengali-Regular.ttf").then((response) =>
+        response.arrayBuffer(),
+      ),
+      fetch("/fonts/NotoSansBengali-Bold.ttf").then((response) =>
+        response.arrayBuffer(),
+      ),
+    ]);
+
+    doc.addFileToVFS(
+      "NotoSansBengali-Regular.ttf",
+      arrayBufferToBinaryString(regular),
+    );
+    doc.addFont("NotoSansBengali-Regular.ttf", pdfFontName, "normal");
+    doc.addFileToVFS(
+      "NotoSansBengali-Bold.ttf",
+      arrayBufferToBinaryString(bold),
+    );
+    doc.addFont("NotoSansBengali-Bold.ttf", pdfFontName, "bold");
+
+    return pdfFontName;
+  } catch {
+    return "helvetica";
+  }
+}
 
 function voucherNumber(groupId: string) {
   return `SPL-${groupId.slice(-8).toUpperCase()}`;
@@ -34,9 +77,11 @@ export async function downloadPdfReport({
   group,
   expenses,
   settlements,
+  currency = DEFAULT_CURRENCY,
 }: PdfReportInput) {
   const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF();
+  const doc = new jsPDF({ putOnlyUsedFonts: true });
+  const fontFamily = await loadPdfFonts(doc);
   const margin = 16;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -79,7 +124,7 @@ export async function downloadPdfReport({
     } = {},
   ) => {
     const size = options.size ?? 10;
-    doc.setFont("helvetica", options.style ?? "normal");
+    doc.setFont(fontFamily, options.style ?? "normal");
     doc.setFontSize(size);
     setColor(options.color ?? ink);
     const lines = doc.splitTextToSize(value, options.maxWidth ?? contentWidth);
@@ -158,7 +203,7 @@ export async function downloadPdfReport({
 
       let x = margin + 8;
       cellLines.forEach((lines, index) => {
-        doc.setFont("helvetica", index === 2 ? "bold" : "normal");
+        doc.setFont(fontFamily, index === 2 ? "bold" : "normal");
         doc.setFontSize(7.8);
         setColor(index === 2 ? ink : [51, 65, 85]);
         doc.text(lines, x, y + 5);
@@ -270,7 +315,7 @@ export async function downloadPdfReport({
     margin + 6,
     boxWidth,
     "TOTAL EXPENSE",
-    formatCurrency(totalExpenses, "en"),
+    formatCurrency(totalExpenses, "en", currency),
     teal,
   );
   summaryBox(
@@ -284,7 +329,7 @@ export async function downloadPdfReport({
     margin + 6 + (boxWidth + boxGap) * 2,
     boxWidth,
     "TO SETTLE",
-    formatCurrency(totalSettlement, "en"),
+    formatCurrency(totalSettlement, "en", currency),
     settlements.length > 0 ? indigo : teal,
   );
   y += 31;
@@ -312,6 +357,7 @@ export async function downloadPdfReport({
                 `${memberName(group.members, payment.userId)} ${formatCurrency(
                   payment.amountCents,
                   "en",
+                  currency,
                 )}`,
             )
             .join(", ");
@@ -320,13 +366,14 @@ export async function downloadPdfReport({
         ? `${expense.splitType}; shared ${formatCurrency(
             getExpenseSharedAmountCents(expense),
             "en",
+            currency,
           )}`
         : expense.splitType;
 
     return [
       formatDate(expense.createdAt, "en"),
       expense.note.trim() || "Shared expense",
-      formatCurrency(expense.amountCents, "en"),
+      formatCurrency(expense.amountCents, "en", currency),
       paidBy,
       splitNote,
     ];
@@ -335,7 +382,15 @@ export async function downloadPdfReport({
     ["Date", "Description", "Amount", "Paid By", "Split"],
     expenseRows.length > 0
       ? expenseRows
-      : [["--", "No expenses recorded", formatCurrency(0, "en"), "--", "--"]],
+      : [
+          [
+            "--",
+            "No expenses recorded",
+            formatCurrency(0, "en", currency),
+            "--",
+            "--",
+          ],
+        ],
     [22, 40, 25, 51, 28],
   );
 
@@ -343,7 +398,7 @@ export async function downloadPdfReport({
   const settlementRows = settlements.map((settlement) => [
     memberName(group.members, settlement.fromId),
     memberName(group.members, settlement.toId),
-    formatCurrency(settlement.amountCents, "en"),
+    formatCurrency(settlement.amountCents, "en", currency),
   ]);
   table(
     ["From", "To", "Amount"],
@@ -353,7 +408,7 @@ export async function downloadPdfReport({
           [
             "No settlement required",
             "Everyone is balanced",
-            formatCurrency(0, "en"),
+            formatCurrency(0, "en", currency),
           ],
         ],
     [58, 58, 50],

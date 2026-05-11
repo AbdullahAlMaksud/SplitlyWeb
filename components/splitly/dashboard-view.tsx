@@ -17,9 +17,45 @@ import { useSplitlyStore } from "@/store/splitly-store";
 import AnimatedBuildingLogo from "../preview";
 
 export function DashboardView() {
-  const { groups, expenses, currentUser } = useSplitlyStore();
+  const groups = useSplitlyStore((state) => state.groups);
+  const expenses = useSplitlyStore((state) => state.expenses);
+  const currentUserId = useSplitlyStore((state) => state.currentUser.id);
   const { t } = useTranslation();
-  const currentUserId = currentUser.id;
+  const groupSnapshots = useMemo(() => {
+    const expensesByGroup = new Map<string, typeof expenses>();
+    const balancesByGroup = new Map<string, number>();
+    const settlementsByGroup = new Map<
+      string,
+      ReturnType<typeof optimizeSettlements>
+    >();
+
+    for (const expense of expenses) {
+      const groupExpenses = expensesByGroup.get(expense.groupId) ?? [];
+      groupExpenses.push(expense);
+      expensesByGroup.set(expense.groupId, groupExpenses);
+    }
+
+    for (const groupExpenses of expensesByGroup.values()) {
+      groupExpenses.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+    }
+
+    for (const group of groups) {
+      const groupExpenses = expensesByGroup.get(group.id) ?? [];
+      const balances = calculateGroupBalances(group, groupExpenses);
+      balancesByGroup.set(
+        group.id,
+        balances.find((item) => item.userId === currentUserId)?.balanceCents ??
+          0,
+      );
+      settlementsByGroup.set(group.id, optimizeSettlements(balances));
+    }
+
+    return { expensesByGroup, balancesByGroup, settlementsByGroup };
+  }, [currentUserId, expenses, groups]);
+
   const summary = useMemo(() => {
     let owedCents = 0;
     let oweCents = 0;
@@ -28,16 +64,7 @@ export function DashboardView() {
     const individualsOwe = new Set<string>();
 
     for (const group of groups) {
-      const groupExpenses = expenses
-        .filter((expense) => expense.groupId === group.id)
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-      const balances = calculateGroupBalances(group, groupExpenses);
-      const balance =
-        balances.find((item) => item.userId === currentUserId)?.balanceCents ??
-        0;
+      const balance = groupSnapshots.balancesByGroup.get(group.id) ?? 0;
 
       if (balance > 0) {
         owedCents += balance;
@@ -49,7 +76,9 @@ export function DashboardView() {
         groupsWithBalance += 1;
       }
 
-      for (const settlement of optimizeSettlements(balances)) {
+      for (const settlement of groupSnapshots.settlementsByGroup.get(
+        group.id,
+      ) ?? []) {
         if (settlement.toId === currentUserId)
           individualsOwed.add(settlement.fromId);
         if (settlement.fromId === currentUserId)
@@ -64,14 +93,14 @@ export function DashboardView() {
       individualsOwed: individualsOwed.size,
       individualsOwe: individualsOwe.size,
     };
-  }, [currentUserId, expenses, groups]);
+  }, [currentUserId, groupSnapshots, groups]);
 
   return (
     <div className="space-y-10">
       {groups.length === 0 ? (
         <section className="grid min-h-[calc(100vh-12rem)] items-center gap-10 py-8 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="section-glide space-y-7">
-            <div className="inline-flex rounded-md border border-white/20 bg-white/10 px-3 py-1 text-sm text-muted-foreground backdrop-blur-xl">
+            <div className="inline-flex rounded-md border border-emerald-300/40 bg-emerald-50/80 px-3 py-1 text-sm font-medium text-emerald-800 backdrop-blur-xl dark:border-white/20 dark:bg-white/10 dark:text-muted-foreground">
               {t("dashboard.tag")}
             </div>
             <div className="space-y-4">
@@ -100,7 +129,7 @@ export function DashboardView() {
           <div className="glass-panel section-glide rounded-lg p-6 motion-safe:[animation-delay:140ms]">
             <div className="space-y-5">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">
+                <span className="text-sm font-semibold text-foreground/80">
                   {t("dashboard.exampleFlow")}
                 </span>
                 <span className="rounded-md bg-primary/15 px-2 py-1 text-xs font-medium text-primary">
@@ -117,7 +146,8 @@ export function DashboardView() {
                 ].map((item, index) => (
                   <div
                     key={item}
-                    className="flex items-center gap-3 rounded-md border border-white/15 bg-white/10 p-3 backdrop-blur-xl"
+                    className="section-glide flex items-center gap-3 rounded-md border border-emerald-200/50 bg-white/60 p-3 backdrop-blur-xl dark:border-white/15 dark:bg-white/10"
+                    style={{ animationDelay: `${(index + 2) * 90}ms` }}
                   >
                     <span className="flex size-7 items-center justify-center rounded-md bg-primary/15 font-mono text-xs text-primary">
                       {index + 1}
@@ -175,14 +205,10 @@ export function DashboardView() {
                 <GroupCard
                   key={group.id}
                   group={group}
-                  expenses={expenses
-                    .filter((expense) => expense.groupId === group.id)
-                    .sort(
-                      (a, b) =>
-                        new Date(b.createdAt).getTime() -
-                        new Date(a.createdAt).getTime(),
-                    )}
-                  currentUserId={currentUserId}
+                  expenses={groupSnapshots.expensesByGroup.get(group.id) ?? []}
+                  balanceCents={
+                    groupSnapshots.balancesByGroup.get(group.id) ?? 0
+                  }
                 />
               ))}
             </div>

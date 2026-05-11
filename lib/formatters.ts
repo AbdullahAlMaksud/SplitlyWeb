@@ -1,4 +1,6 @@
 import i18n from "@/lib/i18n";
+import { DEFAULT_CURRENCY, isCurrencyCode } from "@/lib/currency";
+import type { CurrencyCode } from "@/lib/types";
 
 const BANGLA_DIGIT_MAP: Record<string, string> = {
   "০": "0",
@@ -42,11 +44,37 @@ export function formatNumber(value: number, language?: string) {
   return new Intl.NumberFormat(resolveLocale(language)).format(value);
 }
 
-export function formatCurrency(cents: number, language?: string) {
+export function formatCurrencyValue(
+  cents: number,
+  language?: string,
+  fractionDigits = 2,
+) {
+  return new Intl.NumberFormat(resolveLocale(language), {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(Math.abs(cents) / 100);
+}
+
+export function resolveCurrency(currency?: CurrencyCode | string) {
+  return isCurrencyCode(currency) ? currency : DEFAULT_CURRENCY;
+}
+
+export function formatCurrency(
+  cents: number,
+  language?: string,
+  currency?: CurrencyCode | string,
+) {
+  const resolvedCurrency = resolveCurrency(currency);
+  const centsToFormat =
+    resolvedCurrency === "BDT" ? Math.round(cents / 100) * 100 : cents;
+
   return new Intl.NumberFormat(resolveLocale(language), {
     style: "currency",
-    currency: "USD",
-  }).format(cents / 100);
+    currency: resolvedCurrency,
+    currencyDisplay: "narrowSymbol",
+    minimumFractionDigits: resolvedCurrency === "BDT" ? 0 : undefined,
+    maximumFractionDigits: resolvedCurrency === "BDT" ? 0 : undefined,
+  }).format(centsToFormat / 100);
 }
 
 export function formatDate(value: string, language?: string) {

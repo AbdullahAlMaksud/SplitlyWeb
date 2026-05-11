@@ -29,7 +29,7 @@ import { useSplitlyStore } from "@/store/splitly-store";
 export function CreateGroupForm() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { createGroup } = useSplitlyStore();
+  const createGroup = useSplitlyStore((state) => state.createGroup);
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<GroupIconType>("wallet");
   const [memberNames, setMemberNames] = useState("");

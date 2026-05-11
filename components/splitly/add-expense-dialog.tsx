@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { CurrencyAmount } from "@/components/currency-amount";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -23,14 +24,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  formatCurrency,
   formatNumber,
   parseCurrencyToCents,
   parseLocalizedNumber,
 } from "@/lib/formatters";
-import type { SplitType } from "@/lib/types";
+import { roundCentsToCurrencyUnit } from "@/lib/calculations/settlement";
+import type { Expense, ExpenseShare, SplitType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useSplitlyStore } from "@/store/splitly-store";
 
@@ -58,27 +58,47 @@ function parsePercentage(value: string | undefined) {
   return Number.isFinite(percentage) ? percentage : 0;
 }
 
+function distributeFixedAmounts(amountCents: number, memberIds: string[]) {
+  const roundedAmountCents = roundCentsToCurrencyUnit(amountCents);
+  if (memberIds.length === 0 || roundedAmountCents <= 0) return {};
+
+  const amountUnits = Math.round(roundedAmountCents / 100);
+  const base = Math.floor(amountUnits / memberIds.length);
+  const remainder = amountUnits % memberIds.length;
+
+  return Object.fromEntries(
+    memberIds.map((memberId, index) => [
+      memberId,
+      String(base + (index < remainder ? 1 : 0)),
+    ]),
+  );
+}
+
 export function AddExpenseDialog({
   groupId,
+  expense,
   children,
 }: {
   groupId?: string;
+  expense?: Expense;
   children?: React.ReactNode;
 }) {
-  const { groups, addExpense } = useSplitlyStore();
+  const groups = useSplitlyStore((state) => state.groups);
+  const addExpense = useSplitlyStore((state) => state.addExpense);
+  const updateExpense = useSplitlyStore((state) => state.updateExpense);
   const { t } = useTranslation();
+  const isEditing = Boolean(expense);
   const [open, setOpen] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState(groupId ?? "");
   const [amount, setAmount] = useState("");
   const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>({});
   const [participants, setParticipants] = useState<string[]>([]);
   const [splitType, setSplitType] =
-    useState<Extract<SplitType, "equal" | "percentage">>("equal");
+    useState<Extract<SplitType, "equal" | "percentage" | "custom">>("equal");
   const [percentageShares, setPercentageShares] = useState<
     Record<string, string>
   >({});
-  const [initialBillsEnabled, setInitialBillsEnabled] = useState(false);
-  const [initialBillAmounts, setInitialBillAmounts] = useState<
+  const [fixedShareAmounts, setFixedShareAmounts] = useState<
     Record<string, string>
   >({});
   const [note, setNote] = useState("");
@@ -97,6 +117,7 @@ export function AddExpenseDialog({
       : (selectedGroup?.members.map((member) => member.id) ?? []);
 
   const amountCents = parseCurrencyToCents(amount);
+  const roundedAmountCents = roundCentsToCurrencyUnit(amountCents);
   const payments = (selectedGroup?.members ?? [])
     .map((member) => ({
       userId: member.id,
@@ -107,25 +128,24 @@ export function AddExpenseDialog({
     (total, payment) => total + payment.amountCents,
     0,
   );
-  const initialBills = initialBillsEnabled
-    ? participantValues
-        .map((memberId) => ({
-          userId: memberId,
-          amountCents: parseCurrencyToCents(initialBillAmounts[memberId] ?? ""),
-        }))
-        .filter((bill) => bill.amountCents > 0)
-    : [];
-  const initialTotalCents = initialBills.reduce(
-    (total, bill) => total + bill.amountCents,
+  const participantShares: ExpenseShare[] = participantValues.map(
+    (memberId) => ({
+      userId: memberId,
+      ...(splitType === "percentage"
+        ? { percentage: parsePercentage(percentageShares[memberId]) }
+        : {
+            amountCents: roundCentsToCurrencyUnit(
+              parseCurrencyToCents(fixedShareAmounts[memberId] ?? ""),
+            ),
+          }),
+    }),
+  );
+  const percentageTotal = participantShares.reduce(
+    (total, share) => total + (share.percentage ?? 0),
     0,
   );
-  const sharedAmountCents = Math.max(0, amountCents - initialTotalCents);
-  const participantShares = participantValues.map((memberId) => ({
-    userId: memberId,
-    percentage: parsePercentage(percentageShares[memberId]),
-  }));
-  const percentageTotal = participantShares.reduce(
-    (total, share) => total + share.percentage,
+  const fixedTotalCents = participantShares.reduce(
+    (total, share) => total + (share.amountCents ?? 0),
     0,
   );
   const canSave =
@@ -134,8 +154,9 @@ export function AddExpenseDialog({
     payments.length > 0 &&
     paymentTotalCents === amountCents &&
     participantValues.length > 0 &&
-    initialTotalCents <= amountCents &&
-    (splitType === "equal" || Math.abs(percentageTotal - 100) <= 0.01);
+    (splitType === "equal" ||
+      (splitType === "percentage" && Math.abs(percentageTotal - 100) <= 0.01) ||
+      (splitType === "custom" && fixedTotalCents === roundedAmountCents));
 
   const initializeForGroup = (nextGroupId: string) => {
     const nextGroup = groups.find((group) => group.id === nextGroupId);
@@ -145,8 +166,8 @@ export function AddExpenseDialog({
     setSelectedGroupId(nextGroupId);
     setParticipants(nextParticipants);
     setPayerAmounts({});
-    setInitialBillAmounts({});
     setPercentageShares(distributePercentages(nextParticipants));
+    setFixedShareAmounts(distributeFixedAmounts(amountCents, nextParticipants));
   };
 
   return (
@@ -157,6 +178,48 @@ export function AddExpenseDialog({
           const nextGroupId =
             groupId ?? (selectedGroupId || groups[0]?.id || "");
           if (nextGroupId) initializeForGroup(nextGroupId);
+
+          if (expense) {
+            // Pre-fill for editing
+            setAmount(String(expense.amountCents / 100));
+            setNote(expense.note);
+            setSplitType(
+              expense.splitType === "percentage" ||
+                expense.splitType === "custom"
+                ? expense.splitType
+                : "equal",
+            );
+            setParticipants(expense.participants);
+
+            const payers: Record<string, string> = {};
+            for (const p of expense.payments ?? []) {
+              payers[p.userId] = String(p.amountCents / 100);
+            }
+            setPayerAmounts(payers);
+
+            const shares: Record<string, string> = {};
+            for (const s of expense.participantShares ?? []) {
+              shares[s.userId] = String(
+                expense.splitType === "custom"
+                  ? (s.amountCents ?? 0) / 100
+                  : (s.percentage ?? 0),
+              );
+            }
+            setPercentageShares(
+              expense.splitType === "percentage" &&
+                Object.keys(shares).length > 0
+                ? shares
+                : distributePercentages(expense.participants),
+            );
+            setFixedShareAmounts(
+              expense.splitType === "custom" && Object.keys(shares).length > 0
+                ? shares
+                : distributeFixedAmounts(
+                    expense.amountCents,
+                    expense.participants,
+                  ),
+            );
+          }
         }
         setOpen(nextOpen);
       }}
@@ -171,7 +234,11 @@ export function AddExpenseDialog({
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] min-w-2xl max-w-5xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t("expenseDialog.title")}</DialogTitle>
+          <DialogTitle>
+            {isEditing
+              ? t("expenseDialog.editTitle")
+              : t("expenseDialog.title")}
+          </DialogTitle>
           <DialogDescription>
             {t("expenseDialog.description")}
           </DialogDescription>
@@ -188,23 +255,36 @@ export function AddExpenseDialog({
               event.preventDefault();
               if (!selectedGroup || !canSave) return;
 
-              addExpense({
-                groupId: selectedGroup.id,
-                amountCents,
-                payments,
-                splitType,
-                participants: participantValues,
-                initialBillsEnabled,
-                initialBills,
-                participantShares:
-                  splitType === "percentage" ? participantShares : [],
-                note,
-              });
+              if (isEditing && expense) {
+                updateExpense(expense.id, {
+                  amountCents,
+                  payments,
+                  splitType,
+                  participants: participantValues,
+                  initialBillsEnabled: false,
+                  initialBills: [],
+                  participantShares:
+                    splitType === "equal" ? [] : participantShares,
+                  note,
+                });
+              } else {
+                addExpense({
+                  groupId: selectedGroup.id,
+                  amountCents,
+                  payments,
+                  splitType,
+                  participants: participantValues,
+                  initialBillsEnabled: false,
+                  initialBills: [],
+                  participantShares:
+                    splitType === "equal" ? [] : participantShares,
+                  note,
+                });
+              }
 
               setAmount("");
               setPayerAmounts({});
-              setInitialBillAmounts({});
-              setInitialBillsEnabled(false);
+              setFixedShareAmounts({});
               setSplitType("equal");
               setNote("");
               setOpen(false);
@@ -231,6 +311,15 @@ export function AddExpenseDialog({
               </div>
             ) : null}
 
+            <div className="space-y-2">
+              <Label htmlFor="expense-name">{t("expenseDialog.name")}</Label>
+              <Input
+                id="expense-name"
+                placeholder={t("expenseDialog.namePlaceholder")}
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="expense-amount">
                 {t("expenseDialog.totalExpense")}
@@ -260,9 +349,8 @@ export function AddExpenseDialog({
                       : "bg-white/10 text-muted-foreground",
                   )}
                 >
-                  {t("expenseDialog.paidSummary", {
-                    amount: formatCurrency(paymentTotalCents),
-                  })}
+                  {t("expenseDialog.paid")}{" "}
+                  <CurrencyAmount cents={paymentTotalCents} />
                 </span>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -285,72 +373,9 @@ export function AddExpenseDialog({
                 ))}
               </div>
               {amountCents > 0 && paymentTotalCents !== amountCents ? (
-                <p className="text-xs text-red-300">
-                  {t("expenseDialog.paymentDifference", {
-                    amount: formatCurrency(amountCents - paymentTotalCents),
-                  })}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <Label>{t("expenseDialog.initialBills")}</Label>
-                  <p className="text-xs text-muted-foreground">
-                    {t("expenseDialog.initialBillsHint")}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant={initialBillsEnabled ? "default" : "outline"}
-                  aria-pressed={initialBillsEnabled}
-                  onClick={() => setInitialBillsEnabled((value) => !value)}
-                >
-                  {initialBillsEnabled
-                    ? t("toggles.initialBillsOn")
-                    : t("toggles.initialBillsOff")}
-                </Button>
-              </div>
-
-              {initialBillsEnabled ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {participantValues.map((memberId) => {
-                    const member = selectedGroup?.members.find(
-                      (item) => item.id === memberId,
-                    );
-                    if (!member) return null;
-
-                    return (
-                      <div key={member.id} className="space-y-1">
-                        <Label htmlFor={`initial-${member.id}`}>
-                          {member.name}
-                        </Label>
-                        <Input
-                          id={`initial-${member.id}`}
-                          inputMode="decimal"
-                          placeholder="0.00"
-                          value={initialBillAmounts[member.id] ?? ""}
-                          onChange={(event) =>
-                            setInitialBillAmounts((current) => ({
-                              ...current,
-                              [member.id]: event.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
-              <p className="text-xs text-muted-foreground">
-                {t("expenseDialog.sharedAfterInitial", {
-                  amount: formatCurrency(sharedAmountCents),
-                })}
-              </p>
-              {initialTotalCents > amountCents ? (
-                <p className="text-xs text-red-300">
-                  {t("expenseDialog.initialBillsError")}
+                <p className="flex items-center gap-1 text-xs text-red-300">
+                  <span>{t("expenseDialog.paymentDifferenceLabel")}:</span>
+                  <CurrencyAmount cents={amountCents - paymentTotalCents} />
                 </p>
               ) : null}
             </div>
@@ -371,6 +396,9 @@ export function AddExpenseDialog({
                             ? [...new Set([...current, member.id])]
                             : current.filter((id) => id !== member.id);
                           setPercentageShares(distributePercentages(next));
+                          setFixedShareAmounts(
+                            distributeFixedAmounts(amountCents, next),
+                          );
                           return next;
                         });
                       }}
@@ -388,12 +416,17 @@ export function AddExpenseDialog({
                 onValueChange={(value) => {
                   const nextType = value as Extract<
                     SplitType,
-                    "equal" | "percentage"
+                    "equal" | "percentage" | "custom"
                   >;
                   setSplitType(nextType);
                   if (nextType === "percentage") {
                     setPercentageShares(
                       distributePercentages(participantValues),
+                    );
+                  }
+                  if (nextType === "custom") {
+                    setFixedShareAmounts(
+                      distributeFixedAmounts(amountCents, participantValues),
                     );
                   }
                 }}
@@ -406,6 +439,7 @@ export function AddExpenseDialog({
                   <SelectItem value="percentage">
                     {t("table.percentage")}
                   </SelectItem>
+                  <SelectItem value="custom">{t("table.custom")}</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -467,20 +501,78 @@ export function AddExpenseDialog({
                   </div>
                 </div>
               ) : null}
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="expense-note">{t("expenseDialog.note")}</Label>
-              <Textarea
-                id="expense-note"
-                placeholder={t("expenseDialog.notePlaceholder")}
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-              />
+              {splitType === "custom" ? (
+                <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {participantValues.map((memberId) => {
+                      const member = selectedGroup?.members.find(
+                        (item) => item.id === memberId,
+                      );
+                      if (!member) return null;
+
+                      return (
+                        <div key={member.id} className="space-y-1">
+                          <Label htmlFor={`fixed-${member.id}`}>
+                            {member.name}
+                          </Label>
+                          <Input
+                            id={`fixed-${member.id}`}
+                            inputMode="decimal"
+                            placeholder="0.00"
+                            value={fixedShareAmounts[member.id] ?? ""}
+                            onChange={(event) =>
+                              setFixedShareAmounts((current) => ({
+                                ...current,
+                                [member.id]: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <span
+                      className={cn(
+                        "flex items-center gap-1 font-medium",
+                        fixedTotalCents === roundedAmountCents
+                          ? "text-primary"
+                          : "text-red-300",
+                      )}
+                    >
+                      {t("expenseDialog.totalFixed")}:
+                      <CurrencyAmount cents={fixedTotalCents} />
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setFixedShareAmounts(
+                          distributeFixedAmounts(
+                            amountCents,
+                            participantValues,
+                          ),
+                        )
+                      }
+                    >
+                      {t("expenseDialog.autoEqualAmount")}
+                    </Button>
+                  </div>
+                  {fixedTotalCents !== roundedAmountCents ? (
+                    <p className="text-xs text-red-300">
+                      {t("expenseDialog.fixedAmountError")}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             <Button type="submit" className="w-full" disabled={!canSave}>
-              {t("actions.saveExpense")}
+              {isEditing
+                ? t("actions.updateExpense")
+                : t("actions.saveExpense")}
             </Button>
           </form>
         )}

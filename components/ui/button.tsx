@@ -1,11 +1,10 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
-import { BorderBeam } from "@/components/ui/border-beam";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "group/button relative inline-flex shrink-0 items-center justify-center rounded-full border border-transparent text-sm font-medium whitespace-nowrap shadow-sm transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:relative [&_svg]:z-[2] [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button relative inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent text-sm font-medium whitespace-nowrap shadow-sm transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:relative [&_svg]:z-[2] [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -56,61 +55,8 @@ function Button({
   const decoratedVariant =
     variant === "default" || variant === "outline" || variant === "secondary";
   const variantClassName = cn(buttonVariants({ variant, size, className }));
-  const neuralBackground = decoratedVariant ? (
-    <>
-      {/* <span className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-black/18 via-white/5 to-white/14" /> */}
-      {/* <span className="pointer-events-none absolute inset-px -z-10 rounded-[inherit] bg-emerald-900/96 dark:bg-emerald-800/88" /> */}
-      {/* <svg
-        width="98"
-        height="40"
-        viewBox="0 0 98 40"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="pointer-events-none absolute inset-x-0 bottom-px -z-10 h-12 w-full blur-[6px]"
-        aria-hidden="true"
-      >
-        <g filter="url(#splitly-button-glow)">
-          <path
-            d="M99 37.5708C60.3329 38.179 38.3917 38.106 -1 37.5708C-1 37.5708 2.65293 34.4541 7.59896 29.7774C12.545 25.1008 81.7895 24.0613 90.3618 30.737C98.9341 37.4128 99 37.5708 99 37.5708Z"
-            fill="rgb(209 250 229)"
-          />
-        </g>
-        <defs>
-          <filter
-            id="splitly-button-glow"
-            x="-28.9"
-            y="-1.9"
-            width="155.8"
-            height="67.8"
-            filterUnits="userSpaceOnUse"
-            colorInterpolationFilters="sRGB"
-          >
-            <feFlood floodOpacity="0" result="BackgroundImageFix" />
-            <feBlend
-              mode="normal"
-              in="SourceGraphic"
-              in2="BackgroundImageFix"
-              result="shape"
-            />
-            <feGaussianBlur
-              stdDeviation="13.95"
-              result="effect1_foregroundBlur"
-            />
-          </filter>
-        </defs>
-      </svg> */}
-    </>
-  ) : null;
   const neuralOverlay = decoratedVariant ? (
-    <>
-      <span className="pointer-events-none absolute inset-0 z-[1] rounded-[inherit] [box-shadow:0px_1px_1.6px_0px_color-mix(in_oklab,white_68%,transparent)_inset]" />
-      <BorderBeam
-        size={36}
-        duration={4.2}
-        colorFrom="rgb(255 255 255)"
-        colorTo="rgb(110 231 183)"
-      />
-    </>
+    <span className="pointer-events-none absolute inset-0 z-[1] rounded-[inherit] [box-shadow:0px_1px_1.6px_0px_color-mix(in_oklab,white_68%,transparent)_inset]" />
   ) : null;
 
   if (asChild && React.isValidElement(children)) {
@@ -127,7 +73,6 @@ function Button({
       className: cn(variantClassName, childProps.className),
       children: (
         <>
-          {neuralBackground}
           {childProps.children}
           {neuralOverlay}
         </>
@@ -143,7 +88,6 @@ function Button({
       className={variantClassName}
       {...props}
     >
-      {neuralBackground}
       {children}
       {neuralOverlay}
     </button>
