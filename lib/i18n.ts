@@ -202,7 +202,7 @@ const resources = {
         description: "খরচ ভাগ ও সেটেলমেন্ট করার সিস্টেম",
       },
       nav: {
-        dashboard: "ড্যাশবোর্ড",
+        dashboard: "মূল পাতা",
         newGroup: "নতুন গ্রুপ",
         detail: "বিস্তারিত",
         settlement: "সেটেলমেন্ট",

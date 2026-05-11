@@ -43,6 +43,7 @@ import type { CurrencyCode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import i18n from "@/lib/i18n";
 import { useSplitlyStore } from "@/store/splitly-store";
+import Image from "next/image";
 
 const swatches = ["#7dd3fc", "#5eead4", "#93c5fd", "#a5b4fc", "#67e8f9"];
 
@@ -76,9 +77,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="shell-enter sticky top-3 z-30 px-3 md:px-6">
         <div className="glass-nav mx-auto flex h-16 w-full max-w-7xl items-center gap-3 rounded-full px-3 md:h-18 md:px-5">
           <Link href="/" className="flex min-w-0 items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-cyan-200 text-slate-950 shadow-lg shadow-cyan-950/15">
-              <WalletCards className="size-5" />
-            </span>
+            {/* <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-cyan-200 text-slate-950 shadow-lg shadow-cyan-950/15"> */}
+            <Image src="/logo/icon.png" alt="Logo" width={40} height={40} />
+            {/* </span> */}
             <span className="min-w-0">
               <span className="block text-xl font-semibold leading-none">
                 Splitly
