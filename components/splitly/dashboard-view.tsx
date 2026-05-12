@@ -169,14 +169,7 @@ export function DashboardView() {
               {t("dashboard.overviewDescription")}
             </p>
           </section>
-          <div className="bg-white p-10">
-            <AnimatedBuildingLogo
-              effect="none"
-              size={1000}
-              play={true}
-              loop={true}
-            />
-          </div>
+
           <BalanceSummaryCard
             owedCents={summary.owedCents}
             oweCents={summary.oweCents}
