@@ -14,7 +14,6 @@ import {
   optimizeSettlements,
 } from "@/lib/calculations/settlement";
 import { useSplitlyStore } from "@/store/splitly-store";
-import AnimatedBuildingLogo from "../preview";
 
 export function DashboardView() {
   const groups = useSplitlyStore((state) => state.groups);
