@@ -4,7 +4,7 @@ import { generateMarkdownReport } from "@/shared/lib/export/markdown"
 import type { Expense, Group, SettlementTransaction } from "@/shared/types"
 
 describe("generateMarkdownReport", () => {
-  it("generates valid Splitly report sections", () => {
+  it("generates valid Bonton report sections", () => {
     const group: Group = {
       id: "group",
       name: "Weekend Trip",
@@ -45,7 +45,7 @@ describe("generateMarkdownReport", () => {
 
     const markdown = generateMarkdownReport({ group, expenses, settlements })
 
-    expect(markdown).toContain("# Splitly Group Report")
+    expect(markdown).toContain("# Bonton Group Report")
     expect(markdown).toContain("## Group Information")
     expect(markdown).toContain("- Group Name: Weekend Trip")
     expect(markdown).toContain("## Members")

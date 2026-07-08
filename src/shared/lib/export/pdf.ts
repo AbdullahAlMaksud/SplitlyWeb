@@ -66,11 +66,11 @@ async function loadPdfFonts(doc: import("jspdf").jsPDF) {
 }
 
 function voucherNumber(groupId: string) {
-  return `SPL-${groupId.slice(-8).toUpperCase()}`;
+  return `BTN-${groupId.slice(-8).toUpperCase()}`;
 }
 
 function filenameFor(groupName: string) {
-  return `${groupName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-splitly-voucher.pdf`;
+  return `${groupName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-bonton-voucher.pdf`;
 }
 
 export async function downloadPdfReport({
@@ -228,9 +228,9 @@ export async function downloadPdfReport({
   const generatedAt = new Date().toISOString();
 
   doc.setProperties({
-    title: `${group.name} Splitly Voucher`,
+    title: `${group.name} Bonton Voucher`,
     subject: "Professional group settlement voucher",
-    creator: "Splitly",
+    creator: "Bonton",
   });
 
   drawChrome();
@@ -239,7 +239,7 @@ export async function downloadPdfReport({
   doc.roundedRect(margin + 6, y, contentWidth - 12, 34, 3, 3, "F");
   setFill(teal);
   doc.roundedRect(margin + 6, y, 5, 34, 2, 2, "F");
-  text("SPLITLY", margin + 14, y + 11, {
+  text("BONTON", margin + 14, y + 11, {
     size: 8,
     style: "bold",
     color: [153, 246, 228],
@@ -426,7 +426,7 @@ export async function downloadPdfReport({
   });
 
   text(
-    "This voucher summarizes the local Splitly calculation. Confirm payments before marking the group settled.",
+    "This voucher summarizes the local Bonton calculation. Confirm payments before marking the group settled.",
     pageWidth / 2,
     pageHeight - 11,
     { size: 7, color: muted, align: "center", maxWidth: contentWidth - 20 },

@@ -53,7 +53,7 @@ export function generateMarkdownReport({
 }) {
   const members = group.members;
   const nodes: Content[] = [
-    heading(1, "Splitly Group Report"),
+    heading(1, "Bonton Group Report"),
     heading(2, "Group Information"),
     list([
       `Group Name: ${group.name}`,

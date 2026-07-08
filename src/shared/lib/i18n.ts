@@ -5,9 +5,9 @@ const resources = {
   en: {
     translation: {
       app: {
-        title: "Splitly",
+        title: "Bonton",
         tagline: "Anything splitter",
-        description: "Anything splitter and settlement system",
+        description: "Bonton expense sharing and settlement system",
       },
       nav: {
         dashboard: "Dashboard",
@@ -62,7 +62,7 @@ const resources = {
         tag: "Local-first settlement system",
         heroTitle: "Split any shared cost, then settle with fewer payments.",
         heroDescription:
-          "Create a group for trips, food, rent, or shared resources. Splitly tracks multiple payers, equal, percentage, fixed-amount splits, and optimized settlement locally in your browser.",
+          "Create a group for trips, food, rent, or shared resources. Bonton tracks multiple payers, equal, percentage, fixed-amount splits, and optimized settlement locally in your browser.",
         exampleFlow: "Example flow",
         mvp: "MVP",
         overview: "Overview",
@@ -197,9 +197,9 @@ const resources = {
   bn: {
     translation: {
       app: {
-        title: "স্প্লিটলি",
+        title: "বন্টন",
         tagline: "যেকোনো খরচ ভাগ করুন",
-        description: "খরচ ভাগ ও সেটেলমেন্ট করার সিস্টেম",
+        description: "বন্টন খরচ ভাগ ও সেটেলমেন্ট করার সিস্টেম",
       },
       nav: {
         dashboard: "মূল পাতা",
@@ -255,7 +255,7 @@ const resources = {
         heroTitle:
           "যেকোনো শেয়ার করা খরচ ভাগ করুন, তারপর কম পেমেন্টে সেটেল করুন।",
         heroDescription:
-          "ট্রিপ, খাবার, ভাড়া বা যেকোনো শেয়ার করা খরচের জন্য গ্রুপ তৈরি করুন। Splitly একাধিক payer, সমান, শতকরা, fixed amount split এবং optimized settlement আপনার ব্রাউজারেই লোকালি হিসাব করে।",
+          "ট্রিপ, খাবার, ভাড়া বা যেকোনো শেয়ার করা খরচের জন্য গ্রুপ তৈরি করুন। বন্টন একাধিক payer, সমান, শতকরা, fixed amount split এবং optimized settlement আপনার ব্রাউজারেই লোকালি হিসাব করে।",
         exampleFlow: "উদাহরণ ফ্লো",
         mvp: "MVP",
         overview: "ওভারভিউ",

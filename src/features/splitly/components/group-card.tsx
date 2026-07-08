@@ -28,11 +28,11 @@ export const GroupCard = memo(function GroupCard({
 
   return (
     <Link href={`/groups/${group.id}`}>
-      <Card className="tilt-card section-glide h-full hover:border-primary/60 hover:bg-white/20 hover:shadow-xl hover:shadow-black/10 motion-safe:[animation-delay:180ms] dark:hover:bg-white/10">
+      <Card className="section-glide h-full border-border bg-card hover:bg-accent/40 transition-colors duration-200 motion-safe:[animation-delay:180ms]">
         <CardContent className="flex h-full min-h-48 flex-col p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="flex size-10 items-center justify-center rounded-md border border-white/15 bg-white/10 text-primary backdrop-blur-xl">
+              <span className="flex size-10 items-center justify-center rounded-md border border-border bg-muted text-primary">
                 <GroupIcon icon={group.icon} className="size-5" />
               </span>
               <div>
@@ -64,11 +64,11 @@ export const GroupCard = memo(function GroupCard({
                 <MemberAvatar
                   key={member.id}
                   member={member}
-                  className="size-8 border-2 border-white/40"
+                  className="size-8 border-2 border-background"
                 />
               ))}
               {hiddenCount > 0 ? (
-                <span className="flex size-8 items-center justify-center rounded-full border-2 border-white/40 bg-white/15 text-xs font-semibold backdrop-blur-xl">
+                <span className="flex size-8 items-center justify-center rounded-full border-2 border-background bg-muted text-xs font-semibold">
                   +{hiddenCount}
                 </span>
               ) : null}

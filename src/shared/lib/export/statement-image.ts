@@ -60,7 +60,7 @@ const statementCopy: Record<StatementLanguage, StatementCopy> = {
     mixed: "Mixed",
     personalBills: "personal bills",
     noExpenses: "No expenses",
-    generated: "Generated locally by Splitly",
+    generated: "Generated locally by Bonton",
   },
   bn: {
     title: "সেটেলমেন্ট স্টেটমেন্ট",
@@ -78,7 +78,7 @@ const statementCopy: Record<StatementLanguage, StatementCopy> = {
     mixed: "মিশ্র",
     personalBills: "ব্যক্তিগত বিলসহ",
     noExpenses: "খরচ নেই",
-    generated: "Splitly থেকে তৈরি",
+    generated: "বন্টন থেকে তৈরি",
   },
 }
 
@@ -127,7 +127,7 @@ function safeFilename(value: string) {
     .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "")
 
-  return slug || "splitly-statement"
+  return slug || "bonton-statement"
 }
 
 export function buildStatementImageData(input: StatementImageInput) {
@@ -403,7 +403,7 @@ export async function downloadSettlementStatementImage(
   })
   drawFittedText({
     context,
-    text: "Splitly",
+    text: "Bonton",
     x: 204,
     y: 132,
     maxWidth: 440,
@@ -541,7 +541,7 @@ export async function downloadSettlementStatementImage(
   })
   drawFittedText({
     context,
-    text: "splitly.local",
+    text: "bonton.local",
     x: 976,
     y: 1186,
     maxWidth: 220,
